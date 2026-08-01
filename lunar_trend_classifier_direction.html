@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lunar Structural Trend Classifier</title>
+<style>
+  :root{
+    --bg:#0A0C10;
+    --panel:#12161D;
+    --panel-2:#161B23;
+    --border:#232830;
+    --text:#E8E4D9;
+    --muted:#8A8F98;
+    --ridge:#C97B3D;
+    --ridge-dim:#C97B3D55;
+    --boundary:#5B8FA8;
+    --boundary-dim:#5B8FA855;
+    --other:#8F7FBF;
+    --other-dim:#8F7FBF55;
+    --grid:#1E232B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+  body{
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    min-height:100vh;
+    padding:28px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  header{margin-bottom:22px;}
+  h1{
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    font-weight:600;
+    font-size:28px;
+    letter-spacing:0.2px;
+    margin:0 0 4px 0;
+    color:var(--text);
+  }
+  .subtitle{color:var(--muted);font-size:13.5px;line-height:1.5;max-width:640px;}
+  .eyebrow{
+    font-family:ui-monospace,"SF Mono",Menlo,monospace;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--ridge);
+    margin-bottom:6px;
+  }
+
+  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:20px;align-items:start;}
+  @media (max-width:920px){.grid{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:18px 20px;
+  }
+  .panel h2{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:1.2px;
+    color:var(--muted);
+    margin:0 0 14px 0;
+    font-weight:600;
+  }
+
+  /* controls */
+  .controls{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:11px;color:var(--muted);}
+  select, input[type=file]{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:6px;
+    padding:8px 10px;
+    font-size:13px;
+    font-family:Inter,sans-serif;
+  }
+  .file-label{
+    display:inline-block;
+    background:var(--ridge);
+    color:#181008;
+    padding:9px 16px;
+    border-radius:6px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    border:none;
+  }
+  .file-label:hover{filter:brightness(1.08);}
+  input[type=file]{display:none;}
+  .btn-ghost{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--muted);
+    padding:9px 14px;
+    border-radius:6px;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .btn-ghost:hover{color:var(--text);border-color:var(--muted);}
+
+  .empty{
+    color:var(--muted);
+    font-size:13px;
+    padding:30px 10px;
+    text-align:center;
+    border:1px dashed var(--border);
+    border-radius:8px;
+  }
+
+  table{width:100%;border-collapse:collapse;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;}
+  thead th{
+    text-align:left;
+    color:var(--muted);
+    font-weight:500;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    padding:6px 8px;
+    border-bottom:1px solid var(--border);
+  }
+  tbody td{padding:7px 8px;border-bottom:1px solid var(--grid);vertical-align:middle;}
+  tbody tr:hover{background:var(--panel-2);}
+  .fname{color:var(--text);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;}
+  .tag{
+    font-size:11px;
+    padding:3px 8px;
+    border-radius:20px;
+    border:1px solid transparent;
+    font-family:Inter,sans-serif;
+  }
+  .dir-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-weight:600;
+  }
+  .dir-arrow{display:inline-block;font-size:13px;}
+  select.type-select{
+    padding:4px 6px;
+    font-size:11px;
+    border-radius:5px;
+  }
+  .del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;}
+  .del:hover{color:#c85c5c;}
+
+  .table-scroll{max-height:520px;overflow-y:auto;}
+
+  /* rose diagram */
+  .rose-wrap{display:flex;flex-direction:column;align-items:center;}
+  .stat-row{display:flex;justify-content:space-between;width:100%;font-size:12px;padding:6px 0;border-bottom:1px solid var(--grid);}
+  .stat-row .k{color:var(--muted);}
+  .stat-row .v{font-family:ui-monospace,monospace;color:var(--text);}
+  .legend{display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;justify-content:center;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);}
+  .swatch{width:10px;height:10px;border-radius:2px;}
+
+  .mode-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content;}
+  .mode-toggle button{
+    background:var(--panel-2);border:none;color:var(--muted);
+    padding:7px 12px;font-size:11.5px;cursor:pointer;font-family:Inter,sans-serif;
+  }
+  .mode-toggle button.active{background:var(--ridge);color:#181008;font-weight:600;}
+
+  footer{margin-top:18px;color:var(--muted);font-size:11.5px;text-align:center;}
+  footer a{color:var(--boundary);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">LROC QuickMap · Structural Analysis</div>
+    <h1>Lunar Structural Trend Classifier</h1>
+    <div class="subtitle">Drop in profile CSVs exported from QuickMap (mare boundaries, wrinkle ridges, or any traced arc). Each file's start and end coordinates are used to compute a great-circle bearing, classified into a compass direction — plotted live as a structural rose diagram.</div>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Traced Features</h2>
+      <div class="controls">
+        <div class="field">
+          <label>Tag new uploads as</label>
+          <select id="defaultType">
+            <option value="Wrinkle Ridge">Wrinkle Ridge</option>
+            <option value="Mare Boundary">Mare Boundary</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <label class="file-label" for="fileInput">+ Add CSV(s)</label>
+          <input type="file" id="fileInput" accept=".csv" multiple>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn-ghost" id="exportBtn">Export table (.csv)</button>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn-ghost" id="clearBtn">Clear all</button>
+        </div>
+      </div>
+
+      <div id="tableHolder">
+        <div class="empty" id="emptyState">No features loaded yet — select one or many QuickMap profile CSVs to begin.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Rose Diagram</h2>
+      <div class="mode-toggle" id="modeToggle" style="margin:0 auto 14px auto;">
+        <button data-mode="axial" class="active">Axial trend (0–180°)</button>
+        <button data-mode="directional">Directional (0–360°)</button>
+      </div>
+      <div class="rose-wrap">
+        <svg id="rose" width="300" height="300" viewBox="0 0 300 300"></svg>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div style="margin-top:16px;">
+        <div class="stat-row"><span class="k">Features loaded</span><span class="v" id="statCount">0</span></div>
+        <div class="stat-row"><span class="k">Dominant trend</span><span class="v" id="statDominant">—</span></div>
+        <div class="stat-row"><span class="k">Wrinkle Ridge</span><span class="v" id="statRidge">0</span></div>
+        <div class="stat-row"><span class="k">Mare Boundary</span><span class="v" id="statBoundary">0</span></div>
+        <div class="stat-row"><span class="k">Other</span><span class="v" id="statOther">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Bearing computed via great-circle formula on first/last valid (lat, lon) of each traced path. Axial mode folds direction to 0–180° since ridges/boundaries have no inherent "arrowhead."</footer>
+</div>
+
+<script>
+const DIRS16 = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const ARROWS16 = ["↑","↗","↗","↗","→","↘","↘","↘","↓","↙","↙","↙","←","↖","↖","↖"];
+const TYPE_COLOR = {"Wrinkle Ridge":"var(--ridge)","Mare Boundary":"var(--boundary)","Other":"var(--other)"};
+const TYPE_HEX = {"Wrinkle Ridge":"#C97B3D","Mare Boundary":"#5B8FA8","Other":"#8F7FBF"};
+
+let features = []; // {id, filename, type, sLat, sLon, eLat, eLon, lengthKm, bearing, axial, dirLabel}
+let idCounter = 0;
+let mode = "axial";
+
+function toRad(d){return d*Math.PI/180;}
+function toDeg(r){return r*180/Math.PI;}
+
+function bearing(lat1,lon1,lat2,lon2){
+  const φ1=toRad(lat1), φ2=toRad(lat2), Δλ=toRad(lon2-lon1);
+  const y = Math.sin(Δλ)*Math.cos(φ2);
+  const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+  let θ = toDeg(Math.atan2(y,x));
+  return (θ+360)%360;
+}
+
+function classify16(deg){
+  const idx = Math.round(deg/22.5) % 16;
+  return {label: DIRS16[idx], arrow: ARROWS16[idx]};
+}
+
+function parseCSV(text){
+  // lightweight CSV parser: assumes no embedded commas inside quoted fields
+  // (true for QuickMap's numeric profile exports)
+  const lines = text.split(/\r\n|\n/).filter(l=>l.trim().length>0);
+  if(lines.length<2) return [];
+  const headers = lines[0].split(',').map(h=>h.trim());
+  const rows = [];
+  for(let i=1;i<lines.length;i++){
+    const cells = lines[i].split(',');
+    const row = {};
+    headers.forEach((h,idx)=>{
+      const raw = cells[idx];
+      const num = raw!==undefined && raw!=="" ? Number(raw) : NaN;
+      row[h] = (raw!==undefined && raw!=="" && !isNaN(num)) ? num : raw;
+    });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function handleFiles(fileList){
+  const defaultType = document.getElementById('defaultType').value;
+  [...fileList].forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const rows = parseCSV(e.target.result).filter(r=>r.lat!=null && r.lon!=null && !isNaN(r.lat) && !isNaN(r.lon));
+      if(rows.length<2) return;
+      const first = rows[0], last = rows[rows.length-1];
+      const brg = bearing(first.lat, first.lon, last.lat, last.lon);
+      const axial = brg % 180;
+      const lengthKm = (last.position!=null && !isNaN(last.position)) ? Number(last.position).toFixed(1) : "—";
+      const dirInfo = classify16(brg);
+      features.push({
+        id: idCounter++,
+        filename: file.name,
+        type: defaultType,
+        sLat:first.lat, sLon:first.lon, eLat:last.lat, eLon:last.lon,
+        lengthKm, bearing:brg, axial, dirLabel:dirInfo.label, arrow:dirInfo.arrow
+      });
+      render();
+    };
+    reader.readAsText(file);
+  });
+}
+
+function removeFeature(id){
+  features = features.filter(f=>f.id!==id);
+  render();
+}
+
+function render(){
+  const holder = document.getElementById('tableHolder');
+  if(features.length===0){
+    holder.innerHTML = '<div class="empty" id="emptyState">No features loaded yet — select one or many QuickMap profile CSVs to begin.</div>';
+  } else {
+    let rows = features.map(f=>`
+      <tr>
+        <td><span class="fname" title="${f.filename}">${f.filename}</span></td>
+        <td>
+          <select class="type-select" onchange="setType(${f.id}, this.value)" style="background:${TYPE_HEX[f.type]}22;color:${TYPE_HEX[f.type]};border-color:${TYPE_HEX[f.type]}66;">
+            <option ${f.type==="Wrinkle Ridge"?"selected":""}>Wrinkle Ridge</option>
+            <option ${f.type==="Mare Boundary"?"selected":""}>Mare Boundary</option>
+            <option ${f.type==="Other"?"selected":""}>Other</option>
+          </select>
+        </td>
+        <td>${f.lengthKm} km</td>
+        <td>${f.bearing.toFixed(1)}°</td>
+        <td><span class="dir-badge" style="color:${TYPE_HEX[f.type]}"><span class="dir-arrow">${f.arrow}</span>${f.dirLabel}</span></td>
+        <td><button class="del" onclick="removeFeature(${f.id})">✕</button></td>
+      </tr>`).join("");
+    holder.innerHTML = `
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>File</th><th>Type</th><th>Length</th><th>Bearing</th><th>Direction</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>`;
+  }
+  renderRose();
+  renderStats();
+}
+
+function setType(id, val){
+  const f = features.find(x=>x.id===id);
+  if(f){ f.type = val; render(); }
+}
+
+function renderStats(){
+  document.getElementById('statCount').textContent = features.length;
+  const counts = {"Wrinkle Ridge":0,"Mare Boundary":0,"Other":0};
+  features.forEach(f=>counts[f.type]++);
+  document.getElementById('statRidge').textContent = counts["Wrinkle Ridge"];
+  document.getElementById('statBoundary').textContent = counts["Mare Boundary"];
+  document.getElementById('statOther').textContent = counts["Other"];
+
+  if(features.length===0){
+    document.getElementById('statDominant').textContent = "—";
+    return;
+  }
+  // dominant bin (10 deg bins over axial 0-180)
+  const bins = new Array(18).fill(0);
+  features.forEach(f=>{
+    const idx = Math.floor(f.axial/10)%18;
+    bins[idx]++;
+  });
+  let maxIdx=0;
+  bins.forEach((c,i)=>{ if(c>bins[maxIdx]) maxIdx=i; });
+  const lo=maxIdx*10, hi=lo+10;
+  const midLabel = classify16(lo+5).label;
+  const oppLabel = classify16(lo+5+180).label;
+  document.getElementById('statDominant').textContent = `${midLabel}–${oppLabel} (${lo}–${hi}°)`;
+}
+
+function renderRose(){
+  const svg = document.getElementById('rose');
+  const cx=150, cy=150, maxR=115;
+  let bins = {"Wrinkle Ridge":new Array(18).fill(0),"Mare Boundary":new Array(18).fill(0),"Other":new Array(18).fill(0)};
+
+  features.forEach(f=>{
+    const deg = mode==="axial" ? f.axial : f.bearing;
+    const nbins = mode==="axial" ? 18 : 36; // 10deg bins
+    const idx = Math.floor(deg / (mode==="axial"?10:10)) % nbins;
+    if(!bins[f.type]) bins[f.type]=new Array(nbins).fill(0);
+    bins[f.type][idx]++;
+  });
+
+  const nbins = mode==="axial" ? 18 : 36;
+  const binWidth = 360/ (mode==="axial" ? 18 : 36) * (mode==="axial"?1:1);
+  // total per bin across types for scaling
+  let totals = new Array(nbins).fill(0);
+  Object.values(bins).forEach(arr=>{
+    for(let i=0;i<nbins;i++){
+      const v = arr[i]||0;
+      totals[i]+=v;
+      if(mode==="axial"){ totals[(i+18)%36] = totals[i]; } // mirror handled below differently
+    }
+  });
+  const maxCount = Math.max(1, ...totals);
+
+  let svgParts = [];
+  // grid circles
+  [0.33,0.66,1].forEach(f=>{
+    svgParts.push(`<circle cx="${cx}" cy="${cy}" r="${maxR*f}" fill="none" stroke="#1E232B" stroke-width="1"/>`);
+  });
+  // cardinal lines
+  [0,45,90,135].forEach(a=>{
+    const rad=toRad(a-90);
+    const x1=cx+maxR*Math.cos(rad), y1=cy+maxR*Math.sin(rad);
+    const x2=cx-maxR*Math.cos(rad), y2=cy-maxR*Math.sin(rad);
+    svgParts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1E232B" stroke-width="1"/>`);
+  });
+  // labels N E S W
+  const labelPos = [[cx,cy-maxR-14,"N"],[cx+maxR+14,cy,"E"],[cx,cy+maxR+16,"S"],[cx-maxR-14,cy,"W"]];
+  labelPos.forEach(([x,y,t])=>{
+    svgParts.push(`<text x="${x}" y="${y}" fill="#8A8F98" font-size="11" text-anchor="middle" font-family="ui-monospace,monospace">${t}</text>`);
+  });
+
+  function drawPetal(startDeg, span, r, color){
+    if(r<=0) return "";
+    const a1 = startDeg - 90, a2 = startDeg+span - 90;
+    const r1a = toRad(a1), r1b = toRad(a2);
+    const x1 = cx + r*Math.cos(r1a), y1 = cy + r*Math.sin(r1a);
+    const x2 = cx + r*Math.cos(r1b), y2 = cy + r*Math.sin(r1b);
+    return `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 0,1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${color}" fill-opacity="0.75" stroke="${color}" stroke-width="0.5"/>`;
+  }
+
+  const binSpan = 360/nbins;
+  for(let i=0;i<nbins;i++){
+    let stackR = 0;
+    ["Wrinkle Ridge","Mare Boundary","Other"].forEach(type=>{
+      const arr = bins[type];
+      const count = arr[i]||0;
+      if(count===0) return;
+      const rOuter = maxR * ((stackR+count)/maxCount);
+      const rInner = maxR * (stackR/maxCount);
+      // draw as stacked wedge: approximate via full wedge minus inner using two paths is complex;
+      // simplify: draw full outer wedge, since typical counts small this reads fine as stacked ring by drawing outer first (larger) then smaller on top won't stack correctly.
+      stackR += count;
+    });
+    // simpler stacking: draw from outside in per type in reverse order using cumulative radius per type
+    let cum = 0;
+    const order = ["Other","Mare Boundary","Wrinkle Ridge"];
+    let segs = [];
+    order.forEach(type=>{
+      const c = bins[type][i]||0;
+      if(c>0){ cum+=c; segs.push([type,cum]); }
+    });
+    // draw largest cumulative first (so smaller draws on top)
+    segs.sort((a,b)=>b[1]-a[1]);
+    segs.forEach(([type,cum])=>{
+      const r = maxR*(cum/maxCount);
+      svgParts.push(drawPetal(i*binSpan, binSpan, r, TYPE_HEX[type]));
+    });
+    if(mode==="axial"){
+      // mirror
+      let cum2=0; let segs2=[];
+      order.forEach(type=>{
+        const c = bins[type][i]||0;
+        if(c>0){ cum2+=c; segs2.push([type,cum2]); }
+      });
+      segs2.sort((a,b)=>b[1]-a[1]);
+      segs2.forEach(([type,cum])=>{
+        const r = maxR*(cum/maxCount);
+        svgParts.push(drawPetal(i*binSpan+180, binSpan, r, TYPE_HEX[type]));
+      });
+    }
+  }
+
+  svg.innerHTML = svgParts.join("");
+
+  // legend
+  document.getElementById('legend').innerHTML = ["Wrinkle Ridge","Mare Boundary","Other"].map(t=>
+    `<div class="legend-item"><span class="swatch" style="background:${TYPE_HEX[t]}"></span>${t}</div>`
+  ).join("");
+}
+
+function exportCSV(){
+  if(features.length===0) return;
+  const header = "filename,type,start_lat,start_lon,end_lat,end_lon,length_km,bearing_deg,axial_trend_deg,direction_16pt\n";
+  const rows = features.map(f=>[f.filename,f.type,f.sLat,f.sLon,f.eLat,f.eLon,f.lengthKm,f.bearing.toFixed(2),f.axial.toFixed(2),f.dirLabel].join(",")).join("\n");
+  const blob = new Blob([header+rows], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download="lunar_feature_orientations.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('fileInput').addEventListener('change', e=>{
+  handleFiles(e.target.files);
+  e.target.value = "";
+});
+document.getElementById('exportBtn').addEventListener('click', exportCSV);
+document.getElementById('clearBtn').addEventListener('click', ()=>{ features=[]; render(); });
+document.getElementById('modeToggle').addEventListener('click', e=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  mode = btn.dataset.mode;
+  document.querySelectorAll('#modeToggle button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelector('.mode-toggle button[data-mode="axial"]').nextSibling; // noop
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
